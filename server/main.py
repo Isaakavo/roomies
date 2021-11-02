@@ -1,6 +1,6 @@
 from flask import Flask
 from flask_restful import Api
-from res.api_models import Users, Tasks
+from res.api_models import Users, Tasks, Login
 from models.models import db
 import datetime
 
@@ -15,6 +15,7 @@ db.init_app(app)
 
 api.add_resource(Users, '/api/users') 
 api.add_resource(Tasks, '/api/tasks')
+api.add_resource(Login, '/api/login')
 
 with app.app_context():
   db.create_all()

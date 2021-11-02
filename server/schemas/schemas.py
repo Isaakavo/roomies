@@ -16,3 +16,7 @@ class TasksSchema(ma.Schema):
   created = fields.DateTime('%d-%m-%Y %H:%M:%S')
   ended = fields.DateTime('%d-%m-%Y %H:%M:%S')
 
+class LoginSchema(ma.Schema):
+  username = fields.String()
+  password = fields.String()
+
