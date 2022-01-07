@@ -11,7 +11,15 @@ login_schema = LoginSchema()
 token_schema = TokenSchema()
 
 class Users(Resource):
-  def get(self):
+  def get(self, username):
+    authorizationHeader = request.headers.get('Authorization')
+    print(request.headers.get('Authorization'))
+    current_user = checkForToken(authorizationHeader)
+    if isinstance(current_user, Response):
+      return current_user
+    if username is not None:
+      user = UserModel.query.filter_by(username=username).first()
+      return make_response(user_schema.dump(user), 200)
     data = request.get_json()
     username_req = user_schema.load(data)
     user = UserModel.query.filter_by(username=username_req['username']).first()
@@ -38,26 +46,31 @@ class Users(Resource):
 class Tasks(Resource):
   def get(self):
     # data = [request.headers.get('Authorization'), request.headers.get('tokenType')]
-    header = request.headers['Authorization']
-    if header != "" and header != None:
-      decryptToken = oauth2.get_current_user(header)
-      if isinstance(decryptToken, Response):
-        return decryptToken 
-      user = UserModel.query.filter_by(id=decryptToken['userId']).first()
-      resp = task_schema.dump(user.tasks, many= True)
-      return resp
-    return 500
-
-  def post(self):
-    header = request.headers['Authorization']
-    print(header)
-    if header == "" or header is None:
-      return make_response('Missing JWT', 403)
-    data = request.get_json()
-    args = task_schema.load(data)
-    current_user = oauth2.get_current_user(header)
+    authorizationHeader = request.headers.get('Authorization')
+    current_user = checkForToken(authorizationHeader)
     if isinstance(current_user, Response):
       return current_user
+    user = UserModel.query.filter_by(id=current_user['userId']).first()
+    return task_schema.dump(user.tasks, many = True)
+    # if header != "" and header != None:
+    #   decryptToken = oauth2.get_current_user(header)
+    #   if isinstance(decryptToken, Response):
+    #     return decryptToken 
+    #   user = UserModel.query.filter_by(id=decryptToken['userId']).first()
+    #   resp = task_schema.dump(user.tasks, many= True)
+    #   return resp
+    # return 500
+
+  def post(self):
+    authorizationHeader = request.headers.get('Authorization')
+    # if header == "" or header is None:
+    #   return make_response('Missing JWT', 403)
+    # current_user = oauth2.get_current_user(header)
+    current_user = checkForToken(authorizationHeader)
+    if isinstance(current_user, Response):
+      return current_user
+    data = request.get_json()
+    args = task_schema.load(data)
     user = UserModel.query.filter_by(id=current_user['userId']).first()
     if not user:
       abort(404, message='No user found')
@@ -82,3 +95,11 @@ class Login(Resource):
     #return token
     acces_token = oauth2.create_acces_token(data= {"userId": user.id})
     return {"acces_token": acces_token, "token_type": "bearer"}
+
+
+
+def checkForToken(header):
+  if header != None and header != "":
+    return oauth2.get_current_user(header)
+  else:
+    return make_response(jsonify({'error': 'Authorization header missing'}), 403)
