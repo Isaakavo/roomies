@@ -13,7 +13,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
 
-api.add_resource(Users, '/api/users') 
+api.add_resource(Users, '/api/users', '/api/users/<username>', '/api/users/<userid>/tasks') 
 api.add_resource(Tasks, '/api/tasks')
 api.add_resource(Login, '/api/login')
 
