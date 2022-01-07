@@ -41,6 +41,7 @@ class AssignedTaskModel(db.Model):
   description = db.Column(db.String(200), nullable = True)
   created = db.Column(db.DateTime, nullable = False)
   ended = db.Column(db.DateTime, nullable = True)
+  is_completed = db.Column(db.Boolean, nullable = False)
   user = db.relationship('UserModel', secondary=user_tasks, backref='task')
 
   def __repr__(self):
