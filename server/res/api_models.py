@@ -1,7 +1,7 @@
 from flask import jsonify, make_response, request, Response
 from flask_restful import Resource, abort
-from models.models import UserModel, AssignedTaskModel ,db
-from schemas.schemas import UserSchema, TasksSchema, TokenSchema, LoginSchema
+from models.models import UserModel, AssignedTaskModel, ResponseBodyModel, db
+from schemas.schemas import UserSchema, TasksSchema, TokenSchema, LoginSchema, ResponseBody, QuerySchema
 from . import oauth2
 import datetime
 
@@ -9,6 +9,8 @@ user_schema = UserSchema()
 task_schema = TasksSchema()
 login_schema = LoginSchema()
 token_schema = TokenSchema()
+response_body = ResponseBody()
+query_schema = QuerySchema()
 
 class Users(Resource):
   def get(self, username=''):
@@ -20,7 +22,8 @@ class Users(Resource):
       user = UserModel.query.filter_by(username=username).first()
       if not user:
         abort(404, message='No user with that username')
-      return make_response(user_schema.dump(user), 200)
+      resp = getJsonBody(user.id)
+      return response_body.dump(resp), 200
     else:
       allUsers = UserModel.query.all()
       return user_schema.dump(allUsers, many = True), 200
@@ -44,22 +47,15 @@ class Tasks(Resource):
     current_user = checkForToken(authorizationHeader)
     if isinstance(current_user, Response):
       return abort(current_user)
-    user = UserModel.query.filter_by(id=current_user['userId']).first()
-    return task_schema.dump(user.tasks, many = True)
-    # if header != "" and header != None:
-    #   decryptToken = oauth2.get_current_user(header)
-    #   if isinstance(decryptToken, Response):
-    #     return decryptToken 
-    #   user = UserModel.query.filter_by(id=decryptToken['userId']).first()
-    #   resp = task_schema.dump(user.tasks, many= True)
-    #   return resp
-    # return 500
+    queries = query_schema.load(request.args)
+    if queries['limit']:
+      response = getJsonBody(current_user['userId'], queries['limit'])
+      return response_body.dump(response)
+    response = getJsonBody(current_user['userId'])
+    return response_body.dump(response)
 
   def post(self):
     authorizationHeader = request.headers.get('Authorization')
-    # if header == "" or header is None:
-    #   return make_response('Missing JWT', 403)
-    # current_user = oauth2.get_current_user(header)
     current_user = checkForToken(authorizationHeader)
     if isinstance(current_user, Response):
       return current_user
@@ -68,13 +64,14 @@ class Tasks(Resource):
     user = UserModel.query.filter_by(id=current_user['userId']).first()
     if not user:
       abort(404, message='No user found')
-    task = AssignedTaskModel(user_id=user.id ,task=args['task'], description=args['description'], created=datetime.datetime.now(), ended=datetime.datetime.now())
+    task = AssignedTaskModel(user_id=user.id ,task=args['task'], is_completed=args['is_completed'], description=args['description'], created=datetime.datetime.now(), ended=datetime.datetime.now())
     user.tasks.append(task)
     db.session.add(user)
     db.session.commit()
     # resp = user_schema.dump(user)
     resp = make_response(task_schema.dump(task), 201, {'Location': '' })
     return resp
+
 class Login(Resource):
   def post(self):
     args = login_schema.load(request.form)
@@ -86,10 +83,17 @@ class Login(Resource):
     acces_token = oauth2.create_acces_token(data= {"userId": user.id})
     return {"token": acces_token, "token_type": "bearer"}
 
-
-
 def checkForToken(header):
   if header != None and header != "":
     return oauth2.get_current_user(header)
   else:
     return make_response(jsonify({'error': 'Authorization header missing'}), 403)
+
+def getJsonBody(userId, limit=0):
+  if limit != 0:
+    tasks = AssignedTaskModel.query.filter_by(user_id=userId).limit(limit).all()
+    print(len(tasks))
+    return ResponseBodyModel(len(tasks), tasks)
+  tasks = AssignedTaskModel.query.filter_by(user_id=userId).all()
+  count = AssignedTaskModel.query.filter_by(user_id=userId).count()
+  return ResponseBodyModel(count, tasks)
