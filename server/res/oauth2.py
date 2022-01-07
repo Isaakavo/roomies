@@ -24,17 +24,11 @@ def create_acces_token(data: dict):
 def verify_token(token: str, credentials_exception):
   try:
     jwtData = token.split()[1]
-    payload = jwt.decode(jwtData, SECRET_KEY, algorithms= [ALGORITHM], options={'verify_exp': False})
-    id = payload.get('userId')
-    expires = payload.get('exp')
-    if expires > datetime.utcnow().timestamp():
-      return make_response('Time has expired', 401, {'WWW-Authenticate' : 'Basic realm ="time has expired"'})
-    if not id:
-      resp = make_response(credentials_exception, 401, {'WWW-Authenticate' : 'Basic realm ="User does not exist !!"'})
-      return resp
+    payload = jwt.decode(jwtData, SECRET_KEY, algorithms= [ALGORITHM])
     token_data = token_data_schema.dump(payload)
-  except JWTError:
-    resp = make_response(credentials_exception, 401,{'WWW-Authenticate' : 'Basic realm ="User does not exist !!"'})
+  except JWTError as e:
+    print(e)
+    resp = make_response({'error':str(e)}, 401,{'WWW-Authenticate' : 'Basic realm ="User does not exist !!"'})
     return resp
   return token_data
 
