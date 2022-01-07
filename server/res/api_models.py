@@ -48,7 +48,7 @@ class Tasks(Resource):
     if isinstance(current_user, Response):
       return abort(current_user)
     queries = query_schema.load(request.args)
-    if queries['limit']:
+    if queries.get('limit'):
       response = getJsonBody(current_user['userId'], queries['limit'])
       return response_body.dump(response)
     response = getJsonBody(current_user['userId'])
