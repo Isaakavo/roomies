@@ -11,23 +11,31 @@ login_schema = LoginSchema()
 token_schema = TokenSchema()
 
 class Users(Resource):
-  def get(self, username):
+  def get(self, username=''):
     authorizationHeader = request.headers.get('Authorization')
-    print(request.headers.get('Authorization'))
     current_user = checkForToken(authorizationHeader)
     if isinstance(current_user, Response):
       return current_user
-    if username is not None:
+    if username is not None and username is not "":
+      print('in usrename' + username)
       user = UserModel.query.filter_by(username=username).first()
+      if not user:
+        print('aborting')
+        abort(404, message='No user with that username')
       return make_response(user_schema.dump(user), 200)
-    data = request.get_json()
-    username_req = user_schema.load(data)
-    user = UserModel.query.filter_by(username=username_req['username']).first()
-    if not user:
-      print('aborting')
-      abort(404, message='No user with that username')
-    resp = user_schema.dump(user)
-    return resp, 200
+    else:
+      print('in no username part')
+      allUsers = UserModel.query.all()
+      print(allUsers)
+      return user_schema.dump(allUsers, many = True), 200
+    # data = request.get_json()
+    # username_req = user_schema.load(data)
+    # user = UserModel.query.filter_by(username=username_req['username']).first()
+    # if not user:
+    #   print('aborting')
+    #   abort(404, message='No user with that username')
+    # resp = user_schema.dump(user)
+    # return resp, 200
 
   def post(self):
     data = request.get_json()
