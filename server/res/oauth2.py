@@ -27,7 +27,7 @@ def verify_token(token: str, credentials_exception):
     payload = jwt.decode(jwtData, SECRET_KEY, algorithms= [ALGORITHM], options={'verify_exp': False})
     id = payload.get('userId')
     expires = payload.get('exp')
-    if expires < datetime.utcnow().timestamp():
+    if expires > datetime.utcnow().timestamp():
       return make_response('Time has expired', 401, {'WWW-Authenticate' : 'Basic realm ="time has expired"'})
     if not id:
       resp = make_response(credentials_exception, 401, {'WWW-Authenticate' : 'Basic realm ="User does not exist !!"'})
