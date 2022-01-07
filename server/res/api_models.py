@@ -16,26 +16,14 @@ class Users(Resource):
     current_user = checkForToken(authorizationHeader)
     if isinstance(current_user, Response):
       return current_user
-    if username is not None and username is not "":
-      print('in usrename' + username)
+    if username is not None and username != "":
       user = UserModel.query.filter_by(username=username).first()
       if not user:
-        print('aborting')
         abort(404, message='No user with that username')
       return make_response(user_schema.dump(user), 200)
     else:
-      print('in no username part')
       allUsers = UserModel.query.all()
-      print(allUsers)
       return user_schema.dump(allUsers, many = True), 200
-    # data = request.get_json()
-    # username_req = user_schema.load(data)
-    # user = UserModel.query.filter_by(username=username_req['username']).first()
-    # if not user:
-    #   print('aborting')
-    #   abort(404, message='No user with that username')
-    # resp = user_schema.dump(user)
-    # return resp, 200
 
   def post(self):
     data = request.get_json()
@@ -50,14 +38,12 @@ class Users(Resource):
     resp = make_response(jsonify({'error': 'user name already exists', "user": args['username']}), 409)
     return resp
 
-
 class Tasks(Resource):
   def get(self):
-    # data = [request.headers.get('Authorization'), request.headers.get('tokenType')]
     authorizationHeader = request.headers.get('Authorization')
     current_user = checkForToken(authorizationHeader)
     if isinstance(current_user, Response):
-      return current_user
+      return abort(current_user)
     user = UserModel.query.filter_by(id=current_user['userId']).first()
     return task_schema.dump(user.tasks, many = True)
     # if header != "" and header != None:
@@ -89,20 +75,16 @@ class Tasks(Resource):
     # resp = user_schema.dump(user)
     resp = make_response(task_schema.dump(task), 201, {'Location': '' })
     return resp
-
-
 class Login(Resource):
   def post(self):
     args = login_schema.load(request.form)
     user = UserModel.query.filter_by(username = args['username']).first()
     if not user:
-      abort(404, detail='Invalid Credentials')
+      abort(401, message='Username or password incorrect')
     if not user.verify_password_hash(args['password']):
-      abort(404, detail='Invalid Credentials')
-    #Create a token
-    #return token
+      abort(401, message='Username or password incorrect')
     acces_token = oauth2.create_acces_token(data= {"userId": user.id})
-    return {"acces_token": acces_token, "token_type": "bearer"}
+    return {"token": acces_token, "token_type": "bearer"}
 
 
 
