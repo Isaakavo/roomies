@@ -6,17 +6,21 @@ class UserSchema(ma.Schema):
   username = fields.String()
   password = fields.String()
   created = fields.DateTime('%d-%m-%Y %H:%M:%S')
-  tasks = fields.Nested('TasksSchema', many=True)
+  # tasks = fields.Nested('TasksSchema', many=True)
 
 class TasksSchema(ma.Schema):
   id = fields.Integer(dump_only = True)
   task = fields.String()
+  is_completed = fields.Boolean()
   # username = fields.String()
   description = fields.String()
   created = fields.DateTime('%d-%m-%Y %H:%M:%S')
   ended = fields.DateTime('%d-%m-%Y %H:%M:%S')
-  access_token = fields.String()
+  # access_token = fields.String()
 
+class ResponseBody(ma.Schema):
+  count = fields.Integer()
+  tasks = fields.Nested(TasksSchema, many=True)
 class LoginSchema(ma.Schema):
   username = fields.String()
   password = fields.String()
@@ -28,3 +32,6 @@ class TokenSchema(ma.Schema):
 class TokenDataSchema(ma.Schema):
   userId = fields.Integer()
   exp = fields.Integer()
+
+class QuerySchema(ma.Schema):
+  limit = fields.Integer()

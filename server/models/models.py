@@ -46,3 +46,9 @@ class AssignedTaskModel(db.Model):
 
   def __repr__(self):
       return f'AssignedTaskModel(task={self.task}, description={self.description}, created={self.created}, ended={self.ended})'
+
+
+class ResponseBodyModel():
+  def __init__(self, count, tasks) -> None:
+      self.count = count
+      self.tasks = tasks
