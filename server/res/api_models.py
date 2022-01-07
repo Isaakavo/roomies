@@ -1,13 +1,14 @@
-from flask import request
+from flask import jsonify, make_response, request, Response
 from flask_restful import Resource, abort
 from models.models import UserModel, AssignedTaskModel ,db
-from schemas.schemas import UserSchema, TasksSchema, LoginSchema
+from schemas.schemas import UserSchema, TasksSchema, TokenSchema, LoginSchema
 from . import oauth2
 import datetime
 
 user_schema = UserSchema()
 task_schema = TasksSchema()
 login_schema = LoginSchema()
+token_schema = TokenSchema()
 
 class Users(Resource):
   def get(self):
@@ -25,36 +26,48 @@ class Users(Resource):
     args = user_schema.load(data)
     user = UserModel.query.filter_by(username=args['username']).first()
     if not user:
-      print('in user not')  
       user = UserModel(username = args['username'], password = args['password'], created=datetime.datetime.now())
       db.session.add(user)
       db.session.commit()
       resp = user_schema.dump(user)
       return  resp, 201
-    resp = user_schema.dump(user)
-    return resp, 201
+    resp = make_response(jsonify({'error': 'user name already exists', "user": args['username']}), 409)
+    return resp
 
 
 class Tasks(Resource):
   def get(self):
-    data = request.get_json()
-    args = task_schema.load(data)
-    user = UserModel.query.filter_by(username=args['username']).first()
-    resp = task_schema.dump(user.tasks, many= True)
-    return resp
+    # data = [request.headers.get('Authorization'), request.headers.get('tokenType')]
+    header = request.headers['Authorization']
+    if header != "" and header != None:
+      decryptToken = oauth2.get_current_user(header)
+      if isinstance(decryptToken, Response):
+        return decryptToken 
+      user = UserModel.query.filter_by(id=decryptToken['userId']).first()
+      resp = task_schema.dump(user.tasks, many= True)
+      return resp
+    return 500
 
   def post(self):
+    header = request.headers['Authorization']
+    print(header)
+    if header == "" or header is None:
+      return make_response('Missing JWT', 403)
     data = request.get_json()
     args = task_schema.load(data)
-    user = UserModel.query.filter_by(username=args['username']).first()
+    current_user = oauth2.get_current_user(header)
+    if isinstance(current_user, Response):
+      return current_user
+    user = UserModel.query.filter_by(id=current_user['userId']).first()
     if not user:
       abort(404, message='No user found')
     task = AssignedTaskModel(user_id=user.id ,task=args['task'], description=args['description'], created=datetime.datetime.now(), ended=datetime.datetime.now())
     user.tasks.append(task)
     db.session.add(user)
     db.session.commit()
-    resp = user_schema.dump(user)
-    return resp, 201
+    # resp = user_schema.dump(user)
+    resp = make_response(task_schema.dump(task), 201, {'Location': '' })
+    return resp
 
 
 class Login(Resource):
