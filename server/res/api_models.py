@@ -1,8 +1,9 @@
-from flask import jsonify, make_response, request, Response
+from flask import jsonify, make_response, request
 from flask_restful import Resource, abort
-from models.models import UserModel, AssignedTaskModel, ResponseBodyModel, db
+from models.models import UserModel, AssignedTaskModel, db
 from schemas.schemas import UserSchema, TasksSchema, TokenSchema, LoginSchema, ResponseBody, QuerySchema
 from . import oauth2
+from .utils.utils import checkForAuthentication, getJsonBody
 import datetime
 
 user_schema = UserSchema()
@@ -78,25 +79,3 @@ class Login(Resource):
       abort(401, message='Username or password incorrect')
     acces_token = oauth2.create_acces_token(data= {"userId": user.id})
     return {"token": acces_token, "token_type": "bearer"}
-
-def checkForToken(header):
-  if header != None and header != "":
-    return oauth2.get_current_user(header)
-  else:
-    return make_response(jsonify({'error': 'Authorization header missing'}), 403)
-
-def getJsonBody(userId, limit=0):
-  if limit != 0:
-    tasks = AssignedTaskModel.query.filter_by(user_id=userId).limit(limit).all()
-    print(len(tasks))
-    return ResponseBodyModel(len(tasks), tasks)
-  tasks = AssignedTaskModel.query.filter_by(user_id=userId).all()
-  count = AssignedTaskModel.query.filter_by(user_id=userId).count()
-  return ResponseBodyModel(count, tasks)
-
-def checkForAuthentication(request):
-  authorizationHeader = request.headers.get('Authorization')
-  current_user = checkForToken(authorizationHeader)
-  if isinstance(current_user, Response):
-    return abort(current_user)
-  return current_user
