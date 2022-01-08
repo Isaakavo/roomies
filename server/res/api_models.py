@@ -12,12 +12,11 @@ token_schema = TokenSchema()
 response_body = ResponseBody()
 query_schema = QuerySchema()
 
+# Route to get users
+# We can get all the users
 class Users(Resource):
   def get(self, username=''):
-    authorizationHeader = request.headers.get('Authorization')
-    current_user = checkForToken(authorizationHeader)
-    if isinstance(current_user, Response):
-      return current_user
+    checkForAuthentication(request)
     if username is not None and username != "":
       user = UserModel.query.filter_by(username=username).first()
       if not user:
@@ -43,10 +42,7 @@ class Users(Resource):
 
 class Tasks(Resource):
   def get(self):
-    authorizationHeader = request.headers.get('Authorization')
-    current_user = checkForToken(authorizationHeader)
-    if isinstance(current_user, Response):
-      return abort(current_user)
+    current_user = checkForAuthentication(request)
     queries = query_schema.load(request.args)
     if queries.get('limit'):
       response = getJsonBody(current_user['userId'], queries['limit'])
@@ -55,16 +51,13 @@ class Tasks(Resource):
     return response_body.dump(response)
 
   def post(self):
-    authorizationHeader = request.headers.get('Authorization')
-    current_user = checkForToken(authorizationHeader)
-    if isinstance(current_user, Response):
-      return current_user
+    current_user = checkForAuthentication(request)
     data = request.get_json()
     args = task_schema.load(data)
     user = UserModel.query.filter_by(id=current_user['userId']).first()
     if not user:
       abort(404, message='No user found')
-    task = AssignedTaskModel(user_id=user.id ,task=args['task'], is_completed=args['is_completed'], description=args['description'], created=datetime.datetime.now(), ended=datetime.datetime.now())
+    task = AssignedTaskModel(user_id=user.id ,task=args['task'], is_completed=args['is_completed'], description=args['description'], created=datetime.datetime.now())
     user.tasks.append(task)
     db.session.add(user)
     db.session.commit()
@@ -72,6 +65,9 @@ class Tasks(Resource):
     resp = make_response(task_schema.dump(task), 201, {'Location': '' })
     return resp
 
+  # Use only to change task and description
+  def patch(self):
+    pass
 class Login(Resource):
   def post(self):
     args = login_schema.load(request.form)
@@ -97,3 +93,10 @@ def getJsonBody(userId, limit=0):
   tasks = AssignedTaskModel.query.filter_by(user_id=userId).all()
   count = AssignedTaskModel.query.filter_by(user_id=userId).count()
   return ResponseBodyModel(count, tasks)
+
+def checkForAuthentication(request):
+  authorizationHeader = request.headers.get('Authorization')
+  current_user = checkForToken(authorizationHeader)
+  if isinstance(current_user, Response):
+    return abort(current_user)
+  return current_user
