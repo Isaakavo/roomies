@@ -24,3 +24,7 @@ def checkForAuthentication(request):
   if isinstance(current_user, Response):
     return abort(current_user)
   return current_user
+
+def errorHandler(resource, httpCode, message):
+  if not resource:
+    abort(httpCode, message=message)

@@ -3,7 +3,7 @@ from flask_restful import Resource, abort
 from models.models import UserModel, AssignedTaskModel, db
 from schemas.schemas import UserSchema, TasksSchema, TokenSchema, LoginSchema, ResponseBody, QuerySchema
 from . import oauth2
-from .utils.utils import checkForAuthentication, getJsonBody
+from .utils.utils import checkForAuthentication, errorHandler, getJsonBody
 import datetime
 
 user_schema = UserSchema()
@@ -20,8 +20,7 @@ class Users(Resource):
     checkForAuthentication(request)
     if username is not None and username != "":
       user = UserModel.query.filter_by(username=username).first()
-      if not user:
-        abort(404, message='No user with that username')
+      errorHandler(user, 404, 'No user with that username')
       resp = getJsonBody(user.id)
       return response_body.dump(resp), 200
     else:
@@ -56,13 +55,11 @@ class Tasks(Resource):
     data = request.get_json()
     args = task_schema.load(data)
     user = UserModel.query.filter_by(id=current_user['userId']).first()
-    if not user:
-      abort(404, message='No user found')
+    errorHandler(user, 404, message='No user found')
     task = AssignedTaskModel(user_id=user.id ,task=args['task'], is_completed=args['is_completed'], description=args['description'], created=datetime.datetime.now())
     user.tasks.append(task)
     db.session.add(user)
     db.session.commit()
-    # resp = user_schema.dump(user)
     resp = make_response(task_schema.dump(task), 201, {'Location': '' })
     return resp
 
@@ -73,8 +70,7 @@ class Tasks(Resource):
     print(current_user['userId'])
     task = AssignedTaskModel.query.filter_by(id=data.get('id'), user_id=current_user['userId']).first()
     print(task)
-    if not task:
-      abort(403, message='Not allowed to modify this resource')
+    errorHandler(task, 403, 'Not allowed to modify this resource')
     task.task = data.get('task')
     task.description = data.get('description')
     task.is_completed = data.get('is_completed')
@@ -85,9 +81,7 @@ class Login(Resource):
   def post(self):
     args = login_schema.load(request.form)
     user = UserModel.query.filter_by(username = args['username']).first()
-    if not user:
-      abort(401, message='Username or password incorrect')
-    if not user.verify_password_hash(args['password']):
-      abort(401, message='Username or password incorrect')
+    errorHandler(user, 401, 'Username or password incorrect')
+    errorHandler(user.verify_password_hash(args['password']), 401, 'Username or password incorrect')
     acces_token = oauth2.create_acces_token(data= {"userId": user.id})
     return {"token": acces_token, "token_type": "bearer"}
