@@ -68,7 +68,19 @@ class Tasks(Resource):
 
   # Use only to change task and description
   def patch(self):
-    pass
+    current_user = checkForAuthentication(request)
+    data = task_schema.load(request.get_json())
+    print(current_user['userId'])
+    task = AssignedTaskModel.query.filter_by(id=data.get('id'), user_id=current_user['userId']).first()
+    print(task)
+    if not task:
+      abort(403, message='Not allowed to modify this resource')
+    task.task = data.get('task')
+    task.description = data.get('description')
+    task.is_completed = data.get('is_completed')
+    db.session.commit()
+    return make_response(task_schema.dump(task), 200)
+
 class Login(Resource):
   def post(self):
     args = login_schema.load(request.form)
