@@ -13,15 +13,17 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 token_data_schema = TokenDataSchema()
 
-def create_acces_token(data: dict):
+def create_access_token(data: dict):
   to_encode = data.copy()
   expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
   to_encode.update({"exp": expire})
   encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm = ALGORITHM)
   return encoded_jwt
 
-
-def verify_token(token: str, credentials_exception):
+# To verify the token we pass all the string containing the Bearer key and the JWT
+# once it is decoded it must contain the user id and expiration time
+# The libraty check if the token has expired, if it has, an error is thrown
+def get_current_user(token: str):
   try:
     jwtData = token.split()[1]
     payload = jwt.decode(jwtData, SECRET_KEY, algorithms= [ALGORITHM])
@@ -32,5 +34,3 @@ def verify_token(token: str, credentials_exception):
     return resp
   return token_data
 
-def get_current_user(token: str):
-  return verify_token(token, 'Could not validate credentials')

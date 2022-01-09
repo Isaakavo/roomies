@@ -14,7 +14,8 @@ response_body = ResponseBody()
 query_schema = QuerySchema()
 
 # Route to get users
-# We can get all the users
+# We get all the user without their tasks
+# also this is the route to register a new user using the post method
 class Users(Resource):
   def get(self, username=''):
     checkForAuthentication(request)
@@ -40,6 +41,9 @@ class Users(Resource):
     resp = make_response(jsonify({'error': 'user name already exists', "user": args['username']}), 409)
     return resp
 
+# Route to get task resources
+# Only users that has already log in are allowed to put and fetch the data
+# Users can limit the number of tasks to view using 'limit' query
 class Tasks(Resource):
   def get(self):
     current_user = checkForAuthentication(request)
@@ -63,7 +67,7 @@ class Tasks(Resource):
     resp = make_response(task_schema.dump(task), 201, {'Location': '' })
     return resp
 
-  # Use only to change task and description
+  # Use only to change task, description and is_completed
   def patch(self):
     current_user = checkForAuthentication(request)
     data = task_schema.load(request.get_json())
@@ -77,11 +81,13 @@ class Tasks(Resource):
     db.session.commit()
     return make_response(task_schema.dump(task), 200)
 
+# Route made to login the user that alreafe has been register
+# It must return the JWT that allows the user to access to the resources of the api
 class Login(Resource):
   def post(self):
     args = login_schema.load(request.form)
     user = UserModel.query.filter_by(username = args['username']).first()
     errorHandler(user, 401, 'Username or password incorrect')
     errorHandler(user.verify_password_hash(args['password']), 401, 'Username or password incorrect')
-    acces_token = oauth2.create_acces_token(data= {"userId": user.id})
+    acces_token = oauth2.create_access_token(data= {"userId": user.id})
     return {"token": acces_token, "token_type": "bearer"}
