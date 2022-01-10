@@ -71,9 +71,7 @@ class Tasks(Resource):
   def patch(self):
     current_user = checkForAuthentication(request)
     data = task_schema.load(request.get_json())
-    print(current_user['userId'])
     task = AssignedTaskModel.query.filter_by(id=data.get('id'), user_id=current_user['userId']).first()
-    print(task)
     errorHandler(task, 403, 'Not allowed to modify this resource')
     task.task = data.get('task')
     task.description = data.get('description')
